@@ -1,8 +1,9 @@
 #!/data/miniconda3/envs/env1/bin/python
 
-from filelock import FileLock
+from filelock import FileLock, Timeout
 import hickle
 import sys
+from time import sleep
 
 # set constants
 file_path = "/data/picasso/envlist.hkl"
@@ -35,36 +36,43 @@ else:
     # gets name of an environment to use
     pmode = READ_MODE
 
-# creates a lock for the file so it can only be accessed one at a time
-lock = FileLock(lock_path, timeout=time_out_secs)
-
 successful = False
 
 while not successful:
-    with lock:
-        if pmode == RESET_MODE:
-            # create a list (named clist) of nevns environments with the 
-            # prefix envprefix
-            # add code here
-            clist = [envprefix + str(i) for i in range(int(nenvs))]
-            successful = True
-        else:
-            # load hickle file
-            clist = hickle.load(file_path)
+    # creates a lock for the file so it can only be accessed one at a time
+    lock = FileLock(lock_path, timeout=time_out_secs)
 
-            if pmode == WRITE_MODE:
-                # append item to end of list
+    try:
+        with lock:
+            if pmode == RESET_MODE:
+                # create a list (named clist) of nevns environments with the 
+                # prefix envprefix
                 # add code here
-                clist.append(env)
+                clist = [envprefix + str(i) for i in range(int(nenvs))]
                 successful = True
             else:
-                # get and remove env from clist
-                # add code here
-                if len(clist) > 0:
-                    env = clist.pop(0)
-                    # return env name
-                    print(env)
-                    successful = True
+                # load hickle file
+                clist = hickle.load(file_path)
 
-        # save hickle file
-        hickle.dump(clist, file_path, mode="w")
+                if pmode == WRITE_MODE:
+                    # append item to end of list
+                    # add code here
+                    clist.append(env)
+                    successful = True
+                else:
+                    # get and remove env from clist
+                    # add code here
+                    if len(clist) > 0:
+                        env = clist.pop(0)
+                        # return env name
+                        print(env)
+                        successful = True
+
+            # save hickle file
+            hickle.dump(clist, file_path, mode="w")
+
+    except Timeout:
+        pass
+
+    sleep(1)
+
